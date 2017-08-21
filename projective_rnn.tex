@@ -1,0 +1,176 @@
+\documentclass[a4paper,11pt]{article}
+ 
+\usepackage[english]{babel}
+\usepackage[T1]{fontenc}
+\usepackage[ansinew]{inputenc}
+\usepackage{bbold}
+\usepackage{bold-extra}
+\usepackage{lmodern}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{tkz-berge}
+\usepackage{amsfonts}
+\usepackage{gensymb}
+\usepackage{mathtools}
+\usepackage{subfigure}
+\usepackage{theorem}
+\usepackage{bm}
+\usepackage{xcolor}
+\usepackage[unicode]{hyperref}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{tikz}
+\usepackage{graphicx}
+\usepackage{lipsum}
+\usetikzlibrary{positioning}
+\usepackage{tikz}
+\usepackage{empheq}
+\usepackage{booktabs}
+\usepackage{authblk}
+\usetikzlibrary{arrows,shapes}
+\usetikzlibrary{arrows}
+
+%\usepackage{3dplot} %requires 3dplot.sty to be in same directory, or in your LaTeX installation
+%\usepackage{amsmath,amsfonts,amssymb,amsthm,epsfig,epstopdf,titling,url,array}
+\usepackage{xstring}
+
+%\theoremstyle{definition}
+%\newtheorem{defn}{Definition}[section]
+%\newtheorem{conj}{Conjecture}[section]
+%\newtheorem{exmp}{Example}[section]
+\makeatletter
+\newcommand{\change@uppercase@math}{%
+  \count@=`\A
+  \loop
+    \mathcode\count@\count@
+    \ifnum\count@<`\Z
+    \advance\count@\@ne
+  \repeat}
+
+\newcommand{\LSTM}[1]{
+  \mathrm{LSTM}(
+  %(\begingroup\change@uppercase@math#1\endgroup)
+}
+
+\newcommand{\ENC}[1]{
+  \mathrm{ENC}(
+  %(\begingroup\change@uppercase@math#1\endgroup)
+}
+
+\newcommand{\DEC}[1]{
+  \mathrm{DEC}(
+  %(\begingroup\change@uppercase@math#1\endgroup)
+}
+
+\newcommand{\UPDATE}[1]{
+  \mathrm{UPDATE}(
+  %(\begingroup\change@uppercase@math#1\endgroup)
+}
+
+\newcommand{\READ}[1]{
+  \mathrm{READ}(
+ % (\begingroup\change@uppercase@math#1\endgroup)
+}
+
+\newcommand{\CIRC}[1]{
+  \mathrm{circ}(
+ % (\begingroup\change@uppercase@math#1\endgroup)
+}
+
+\newcommand{\RNN}[1]{
+  \mathrm{RNN}(
+ % (\begingroup\change@uppercase@math#1\endgroup)
+}
+
+\newcommand{\ReLU}[1]{
+  \mathrm{ReLU}(
+ % (\begingroup\change@uppercase@math#1\endgroup)
+}
+
+
+\newcommand{\softmax}[1]{
+  \mathrm{softmax}(
+ % (\begingroup\change@uppercase@math#1\endgroup)
+}
+
+
+\makeatother
+
+\newcommand*\GetListMember[2]{\StrBetween[#2,\number\numexpr#2+1]{,#1,},,\par}%
+\newcommand{\tikzmark}[1]{\tikz[overlay,remember picture] \node (#1) {};}
+
+\def\spvec#1{\left(\vcenter{\halign{\hfil$##$\hfil\cr \spvecA#1;;}}\right)}
+\def\spvecA#1;{\if;#1;\else #1\cr \expandafter \spvecA \fi}
+
+\newlength{\MidRadius}
+\newcommand*{\CircularSequence}[3]{%
+    % #1 = outer circle radius
+    % #2 = inner circle radius
+    % #3 = seqeunce
+    \StrCount{#3}{,}[\NumberOfElements]
+    \pgfmathsetmacro{\AngleSep}{360/(\NumberOfElements+1)}
+    \pgfmathsetlength{\MidRadius}{(#1+#2)/2}
+    \draw [red,  ultra thick] circle (#2);
+    \draw [blue, ultra thick] circle (#1);
+%    \draw [thick,->] (0, 0) -- (1.0, 0);
+%    \draw [thick,->] (0, 0) -- (0.0, 1.0);
+    \foreach [count = \Count] \Angle in {0,\AngleSep,..., 360} {%
+        \draw [gray, ultra thick] (\Angle:#2) -- (\Angle:#1);
+        \pgfmathsetmacro{\MidPoint}{\Angle+\AngleSep/2}
+        \node at (\MidPoint:\MidRadius) {\GetListMember{#3}{\Count}};
+    }%7
+}%
+
+
+\author{Povilas Daniu\v{s}is}
+%\email{povilas}  
+%\author[1]{Povilas Daniu\v{s}is \thanks{povilasd@neurotechnology.com}}
+%\author[1,2]{Linas Petkevi\v{c}ius \thanks{linas@neurotechnology.com}}
+%\affil[1]{Neurotechnology}
+%\affil[2]{Vilnius University}
+
+\title{Projective RNN}
+
+\begin{document}
+\pgfdeclarelayer{background}
+\pgfsetlayers{background,main}
+
+
+\maketitle
+
+
+\section{Projective RNN}
+Receiving a sequence of inputs RNN models maintain hidden state as recurrent function $h_{t} = \RNN(x_{t}, h_{t-1})$.
+
+The idea of projective RNN is to couple arbitrary RNN (e.g. LSTM, GRU) module with two dynamically updated matrices $X_{t}$ and $H_{t}$, consisting of important events in input and state spaces respectively.
+
+Having an input $x$ we project it to linear span of dictionary $X$. The optimal projection $\pi_{X}(x)$ is found by minimizing $||x - X\alpha||^{2}$ and is equal to:
+$$
+\pi_{X}(x) := X(X^{T}X)^{-1}X^{T}x.
+$$
+
+
+
+We now define projective RNN:
+
+\begin{align}
+\begin{split}
+X_{t} = \begin{cases}
+X_{t-1} \text{  if } ||x_{t} - \pi_{X_{t-1}}(x_{t})|| < \epsilon_{x},\\
+[X_{t-1}, x_{t}] \text{  otherwise}, \\
+\end{cases}\\
+h_{t} = \RNN(\pi_{X_{t}}(x_{t}), \pi_{H_{t-1}}(h_{t-1}))\\
+H_{t} = \begin{cases}
+H_{t-1} \text{  if } ||h_{t} - \pi_{H_{t-1}}(h_{t})|| < \epsilon_{h}, \\
+[H_{t-1}, h_{t}] \text{  otherwise. }\\
+\end{cases}
+\end{split}.
+\end{align}
+
+
+where $X_{t}$ and $H_{t}$ are dictionaries of inputs and hidden states, and $\epsilon_{x}$ and $\epsilon_{h}$ are two thresholds controlling their updates.
+
+%\subsection{Kernel extension}
+
+
+\end{document}
